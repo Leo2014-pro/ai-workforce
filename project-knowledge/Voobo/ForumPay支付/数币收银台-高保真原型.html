@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数币收银台 · 高保真原型</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#111827; --sub:#6b7280; --line:#e5e7eb;
+    --brand:#2b6bff; --brand-soft:#e8efff; --ok:#16a34a; --ok-soft:#e8f7ee;
+    --warn:#d97706; --warn-soft:#fef3e2; --err:#dc2626; --err-soft:#fdecec;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:24px}
+  .wrap{max-width:520px;margin:0 auto}
+
+  /* 页面级顶部状态条（原型演示用） */
+  .demo-bar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--sub);display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .demo-bar b{color:var(--ink)}
+  .demo-bar .seg{display:flex;background:#eef1f6;border-radius:8px;padding:3px;gap:2px;flex-wrap:wrap}
+  .demo-bar .seg button{border:none;background:transparent;font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;color:var(--sub)}
+  .demo-bar .seg button.on{background:#fff;color:var(--brand);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .demo-bar .act{margin-left:auto;display:flex;gap:6px}
+  .demo-bar .act button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--ink)}
+  .demo-bar .act button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+
+  /* 摘要区 */
+  .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+  .merchant{font-size:14px;font-weight:600}
+  .order-no{font-size:12px;color:var(--sub);margin-top:3px}
+  .amount-block{margin:6px 0 2px}
+  .amount-main{font-size:34px;font-weight:800;letter-spacing:-.5px}
+  .amount-main small{font-size:15px;font-weight:600;color:var(--sub);margin-right:6px}
+  .amount-cny{font-size:13px;color:var(--sub);margin-top:2px}
+  .badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+  .badge.waiting{background:var(--brand-soft);color:var(--brand)}
+  .badge.confirming{background:var(--warn-soft);color:var(--warn)}
+  .badge.paid{background:var(--ok-soft);color:var(--ok)}
+  .badge.expired{background:#eef0f4;color:#4b5563}
+  .badge.diff{background:var(--err-soft);color:var(--err)}
+
+  /* 币种选择 */
+  .field-label{font-size:13px;color:var(--sub);margin:2px 0 8px;font-weight:600}
+  .coins{display:flex;gap:8px;flex-wrap:wrap}
+  .coin{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:.15s}
+  .coin:hover{border-color:#c7d2fe}
+  .coin.on{border-color:var(--brand);background:var(--brand-soft)}
+  .coin .symbol{font-weight:700;font-size:14px}
+  .coin .net{font-size:11px;color:var(--sub)}
+  .coin .rec{font-size:10px;background:var(--ok);color:#fff;border-radius:5px;padding:1px 5px}
+
+  /* 收款卡 */
+  .pay-title{font-size:14px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+  .pay-title .switch{font-size:12px;color:var(--brand);cursor:pointer}
+  .pay-flex{display:flex;gap:16px;align-items:center}
+  .qr-box{width:150px;height:150px;border:1px solid var(--line);border-radius:12px;padding:10px;flex-shrink:0;background:#fff;position:relative}
+  .qr-box img{width:100%;height:100%;display:block}
+  .qr-expired{position:absolute;inset:0;background:rgba(255,255,255,.9);border-radius:12px;display:none;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--err);gap:6px}
+  .addr{flex:1}
+  .addr-row{font-size:13px;color:var(--sub);margin-bottom:6px}
+  .addr-box{background:#f6f8fb;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all;color:#333;margin-bottom:8px}
+  .copy-row{display:flex;gap:8px;align-items:center}
+  .btn{border:none;border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;font-weight:600}
+  .btn-copy{background:#111827;color:#fff}
+  .btn-copy.done{background:var(--ok)}
+  .network-tip{background:var(--warn-soft);border:1px solid #f2d9a9;color:#8a5a06;font-size:12px;border-radius:9px;padding:8px 10px;margin-top:12px;display:flex;gap:6px;align-items:flex-start}
+
+  /* 到账步骤 */
+  .steps{display:flex;align-items:flex-start;margin:6px 0 4px}
+  .step{flex:1;text-align:center;position:relative}
+  .step .dot{width:26px;height:26px;border-radius:50%;margin:0 auto 6px;background:#eef0f4;color:#9ca3af;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step.done .dot{background:var(--ok);color:#fff}
+  .step.now .dot{background:var(--brand);color:#fff}
+  .step .label{font-size:12px;color:var(--sub)}
+  .step.now .label{color:var(--brand);font-weight:700}
+  .step.done .label{color:var(--ok);font-weight:600}
+  .step:not(:last-child)::after{content:"";position:absolute;top:13px;right:-50%;width:100%;height:2px;background:#eef0f4;z-index:0}
+  .step.done:not(:last-child)::after{background:var(--ok)}
+  .step .dot{z-index:1;position:relative}
+
+  /* 提示与倒计时 */
+  .timer{display:flex;align-items:center;gap:8px;justify-content:center;font-size:13px;color:var(--sub);padding:8px 0;border-top:1px dashed var(--line);margin-top:12px}
+  .timer .num{font-weight:800;color:var(--err);font-size:15px}
+  .timer.gone .num{color:var(--err)}
+
+  /* 主按钮 */
+  .actions{display:flex;gap:10px;margin-top:14px}
+  .btn-main{flex:1;padding:13px;font-size:15px;border-radius:12px}
+  .btn-main.primary{background:var(--brand);color:#fff}
+  .btn-main.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .btn-main.primary:hover{filter:brightness(.97)}
+
+  /* 状态覆盖层（已支付/失效/差异） */
+  .state-panel{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px 10px 6px}
+  .state-panel .ico{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:12px}
+  .state-panel .t{font-size:17px;font-weight:700}
+  .state-panel .s{font-size:13px;color:var(--sub);margin-top:6px;line-height:1.6}
+
+  .hidden{display:none !important}
+  footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 原型状态切换演示条 -->
+  <div class="demo-bar">
+    <b>原型演示</b>
+    <span style="font-size:12px">切换订单状态查看收银台反馈</span>
+    <div class="seg" id="stateSeg">
+      <button data-s="waiting" class="on">待支付</button>
+      <button data-s="confirming">确认中</button>
+      <button data-s="paid">已到账</button>
+      <button data-s="expired">已失效</button>
+      <button data-s="diff">差异单</button>
+    </div>
+  </div>
+
+  <!-- 顶部摘要卡 -->
+  <div class="card">
+    <div class="head">
+      <div>
+        <div class="merchant">AI Pro 会员 · 年度</div>
+        <div class="order-no">订单号 P202600001234 · ForumPay 数币收款</div>
+      </div>
+      <span class="badge waiting" id="topBadge">待支付</span>
+    </div>
+    <div class="amount-block">
+      <div class="amount-main"><small>USDT</small><span id="amtMain">350.00</span></div>
+      <div class="amount-cny">≈ ¥2,520.00 <span id="rateLine">· 汇率 1 USDT ≈ 1.00 USD</span></div>
+    </div>
+  </div>
+
+  <!-- 主体：待支付/确认中 -->
+  <div id="body">
+
+    <!-- 币种选择 -->
+    <div class="card">
+      <div class="field-label">① 选择支付币种</div>
+      <div class="coins" id="coinList">
+        <div class="coin on" data-sym="USDT" data-net="TRC20"><span class="symbol">USDT</span><span class="net">TRC20</span></div>
+        <div class="coin" data-sym="USDT" data-net="ERC20"><span class="symbol">USDT</span><span class="net">ERC20</span></div>
+        <div class="coin" data-sym="BTC"><span class="symbol">BTC</span></div>
+        <div class="coin" data-sym="ETH"><span class="symbol">ETH</span></div>
+        <div class="coin" data-sym="USDC"><span class="symbol">USDC</span></div>
+      </div>
+    </div>
+
+    <!-- 收款信息 -->
+    <div class="card">
+      <div class="pay-title"><span>② 向此地址转账 / 扫码支付</span><span class="switch">刷新收款码</span></div>
+      <div class="pay-flex">
+        <div class="qr-box">
+          <img id="qrImg" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Crect width='128' height='128' fill='%23fff'/%3E%3Cg fill='%23111827'%3E%3Crect x='10' y='10' width='30' height='30'/%3E%3Crect x='88' y='10' width='30' height='30'/%3E%3Crect x='10' y='88' width='30' height='30'/%3E%3Crect x='26' y='26' width='10' height='10'/%3E%3Crect x='104' y='26' width='10' height='10'/%3E%3Crect x='26' y='104' width='10' height='10'/%3E%3Cg fill='%232b6bff'%3E%3Crect x='46' y='40' width='6' height='6'/%3E%3Crect x='56' y='46' width='6' height='6'/%3E%3Crect x='66' y='52' width='6' height='6'/%3E%3Crect x='76' y='58' width='6' height='6'/%3E%3Crect x='46' y='58' width='6' height='6'/%3E%3Crect x='56' y='70' width='6' height='6'/%3E%3Crect x='46' y='82' width='6' height='6'/%3E%3Crect x='66' y='76' width='6' height='6'/%3E%3Crect x='76' y='82' width='6' height='6'/%3E%3Crect x='56' y='94' width='6' height='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
+          <div class="qr-expired" id="qrExpired">收款码已失效<br>请点击重新支付</div>
+        </div>
+        <div class="addr">
+          <div class="addr-row">收款地址</div>
+          <div class="addr-box" id="addrText">TQkxVMhx9W5Yc9m1yF7nwKp3a2DdJzNq4r</div>
+          <div class="copy-row">
+            <button class="btn btn-copy" id="copyBtn">复制地址</button>
+            <span style="font-size:12px;color:var(--sub)">仅支持 <b>TRC20</b> 网络转入</span>
+          </div>
+        </div>
+      </div>
+      <div class="network-tip" id="netTip">⚠️ 请确认使用 <b>USDT · TRC20</b> 网络转账，转入其他网络将导致资产丢失，平台无法找回。</div>
+    </div>
+
+    <!-- 到账进度 -->
+    <div class="card">
+      <div class="steps" id="steps">
+        <div class="step done"><div class="dot">✓</div><div class="label">订单已创建</div></div>
+        <div class="step now"><div class="dot">2</div><div class="label">等待网络确认</div></div>
+        <div class="step"><div class="dot">3</div><div class="label">到账成功</div></div>
+      </div>
+      <div class="timer" id="timerLine"><span>本订单限时支付</span><span class="num" id="timerNum">09:58</span><span>超时将失效</span></div>
+      <div class="actions" id="actions">
+        <button class="btn-main ghost">取消订单</button>
+        <button class="btn-main primary">我已转账，查询到账</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态面板：已到账 / 失效 / 差异 -->
+  <div class="card state-panel" id="panelPaid">
+    <div class="ico" style="background:var(--ok-soft)">✅</div>
+    <div class="t">支付已到账</div>
+    <div class="s">USDT 350.00 已确认到账，网络确认完成<br>会员权益已开通，可在“我的会员”查看</div>
+    <div class="actions" style="width:100%;margin-top:16px">
+      <button class="btn-main primary">查看开通结果</button>
+    </div>
+  </div>
+  <div class="card state-panel" id="panelExpired">
+    <div class="ico" style="background:#eef0f4">⏱️</div>
+    <div class="t">订单已失效</div>
+    <div class="s">支付超时，收款码已失效，未产生扣款<br>请重新发起支付，生成新的收款码</div>
+    <div class="actions" style="width:100%;margin-top:16px">
+      <button class="btn-main primary">重新支付</button>
+    </div>
+  </div>
+  <div class="card state-panel" id="panelDiff">
+    <div class="ico" style="background:var(--err-soft)">⚠️</div>
+    <div class="t">到账金额与应付不一致</div>
+    <div class="s">系统检测到转入金额与订单不符<br>请勿继续转账，平台已记录该笔订单，将由客服为您线下核实处理（订单备注可查）</div>
+    <div class="actions" style="width:100%;margin-top:16px">
+      <button class="btn-main primary">联系在线客服</button>
+    </div>
+  </div>
+
+  <footer>数币收银台 · 高保真原型 · 信息层级与状态演示</footer>
+</div>
+
+<script>
+  const amtMain=document.getElementById('amtMain'), rateLine=document.getElementById('rateLine');
+  const coins=document.querySelectorAll('.coin');
+  const steps=[...document.querySelectorAll('#steps .step')];
+  const body=document.getElementById('body'), timerLine=document.getElementById('timerLine'), actions=document.getElementById('actions');
+  const panels={paid:document.getElementById('panelPaid'),expired:document.getElementById('panelExpired'),diff:document.getElementById('panelDiff')};
+  const topBadge=document.getElementById('topBadge'), qrExpired=document.getElementById('qrExpired'), netTip=document.getElementById('netTip');
+  const badgeCls={waiting:['badge waiting','待支付'],confirming:['badge confirming','确认中'],paid:['badge paid','已到账'],expired:['badge expired','已失效'],diff:['badge diff','差异订单']};
+  const seg=document.getElementById('stateSeg');
+
+  const amounts={USDT:['350.00','1 USDT ≈ 1.00 USD'],BTC:['0.0032','1 BTC ≈ 105,000 USD'],ETH:['0.0520','1 ETH ≈ 6,730 USD'],USDC:['350.00','1 USDC ≈ 1.00 USD']};
+
+  function stepReset(){
+    steps.forEach((s,i)=>{
+      s.classList.remove('done','now');
+      if(i===0)s.classList.add('done');
+    });
+  }
+
+  function setState(s){
+    topBadge.className='badge '+badgeCls[s][0]; topBadge.textContent=badgeCls[s][1];
+    seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+    // panels
+    for(const k in panels)panels[k].style.display='none';
+    body.style.display='block';
+    document.querySelector('#actions .btn-main.primary').style.display='';
+    qrExpired.style.display='none';
+    stepReset(); steps[1].classList.remove('now'); steps[2].classList.remove('done');
+    if(s==='waiting'){
+      steps[1].classList.add('now');
+    }else if(s==='confirming'){
+      steps[0].classList.add('done'); steps[1].classList.add('now');
+    }else if(s==='paid'){
+      steps[0].classList.add('done'); steps[1].classList.add('done'); steps[2].classList.add('done');
+    }else if(s==='expired'){
+      qrExpired.style.display='flex'; steps[0].classList.add('done');
+      document.querySelector('#actions .btn-main.primary').style.display='none';
+    }else if(s==='diff'){
+      body.style.display='none'; panels.diff.style.display='flex'; topBadge.textContent='差异订单';
+    }
+    // panels exclusive full for paid/expired
+    if(s==='paid'){ body.style.display='none'; panels.paid.style.display='flex'; }
+    if(s==='expired'){ body.style.display='none'; panels.expired.style.display='flex'; }
+  }
+
+  seg.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return; setState(b.dataset.s);
+  });
+
+  // 币种切换
+  coins.forEach(c=>{
+    c.addEventListener('click',()=>{
+      coins.forEach(x=>x.classList.remove('on'));
+      c.classList.add('on');
+      const sym=c.dataset.sym, net=c.dataset.net||'';
+      const a=amounts[sym];
+      amtMain.textContent=a[0];
+      // 币种符号与地址样例
+      const addr=document.getElementById('addrText');
+      const sample=sym==='BTC'?'bc1qxyz...9f3k2':(sym==='ETH'||sym==='USDC')?'0x8f3C7aD3D8b2E5A1c9F0e4B7D6a2C1E9F0A1B2C3':'TQkxVMhx9W5Yc9m1yF7nwKp3a2DdJzNq4r';
+      addr.textContent=sample;
+      rateLine.textContent='≈ 汇率 '+a[1];
+      const only=document.querySelector('.amount-main small'); only.textContent=sym;
+      netTip.innerHTML='⚠️ 请确认使用 <b>'+sym+(net?' · '+net:'')+'</b> 对应网络转账，转入其他网络将导致资产丢失，平台无法找回。';
+    });
+  });
+
+  // 复制
+  const cb=document.getElementById('copyBtn');
+  cb.addEventListener('click',()=>{ cb.textContent='已复制 ✓'; cb.classList.add('done'); setTimeout(()=>{cb.textContent='复制地址';cb.classList.remove('done');},1500); });
+
+  // 倒计时模拟
+  let left=598; setInterval(()=>{ if(left<=0)return; left--; const m=String(Math.floor(left/60)).padStart(2,'0'),s=String(left%60).padStart(2,'0'); document.getElementById('timerNum').textContent=m+':'+s; if(left===0)setState('expired'); },1000);
+
+  setState('waiting');
+</script>
+</body>
+</html>
